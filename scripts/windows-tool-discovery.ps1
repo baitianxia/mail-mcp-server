@@ -231,9 +231,23 @@ function Resolve-ClaudeCodeInvocation {
         Add-ClaudeCandidate -Candidate $ExplicitPath
     }
     else {
+        # Match the discovery baseline used by the other Windows Claude
+        # integrations: query the native Windows resolver first so every PATH
+        # result is considered, including WinGet links and .cmd shims that
+        # PowerShell may not return as the first command.
+        $whereExe = Join-Path $env:SystemRoot 'System32\where.exe'
+        if (Test-Path -LiteralPath $whereExe -PathType Leaf) {
+            try {
+                $whereResults = @(& $whereExe 'claude' 2>$null)
+                foreach ($whereResult in $whereResults) {
+                    Add-ClaudeCandidate -Candidate ([string]$whereResult).Trim()
+                }
+            }
+            catch { }
+        }
         foreach ($commandName in @('claude.exe', 'claude.cmd')) {
-            $command = Get-Command $commandName -CommandType Application -ErrorAction SilentlyContinue
-            if ($null -ne $command) {
+            $commands = @(Get-Command $commandName -CommandType Application -All -ErrorAction SilentlyContinue)
+            foreach ($command in $commands) {
                 $resolved = if ($command.Source) { $command.Source } else { $command.Path }
                 Add-ClaudeCandidate -Candidate $resolved
             }
@@ -247,10 +261,38 @@ function Resolve-ClaudeCodeInvocation {
             # The standard Windows global npm prefix.
             Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:APPDATA 'npm')
         }
+        if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+            # WinGet's portable Claude Code package normally exposes this
+            # user-level link. Older native installs use the Programs paths.
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:LOCALAPPDATA 'Programs\claude')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:LOCALAPPDATA 'Programs\claude\bin')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:LOCALAPPDATA 'Programs\ClaudeCode')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:LOCALAPPDATA 'Programs\ClaudeCode\bin')
+
+            # Some WinGet versions leave the portable executable in the
+            # package cache without creating a Links entry. Search only the
+            # exact Anthropic package prefix; every candidate still passes the
+            # complete reparse-point and executable checks below.
+            $wingetPackages = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+            if (Test-Path -LiteralPath $wingetPackages -PathType Container) {
+                try {
+                    $packageDirectories = @(Get-ChildItem -LiteralPath $wingetPackages -Directory -Filter 'Anthropic.ClaudeCode*' -ErrorAction SilentlyContinue |
+                        Sort-Object LastWriteTime -Descending)
+                    foreach ($packageDirectory in $packageDirectories) {
+                        Add-ClaudeCandidatesFromDirectory -Directory $packageDirectory.FullName
+                        Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $packageDirectory.FullName 'bin')
+                    }
+                }
+                catch { }
+            }
+        }
         foreach ($programRoot in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA)) {
             if ([string]::IsNullOrWhiteSpace($programRoot)) { continue }
             Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $programRoot 'ClaudeCode')
             Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $programRoot 'Programs\ClaudeCode')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $programRoot 'Claude')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $programRoot 'Programs\Claude')
         }
         # Explorer-launched .cmd files can inherit a stale process PATH after a
         # Claude installation. Include current, user, and machine PATH values.

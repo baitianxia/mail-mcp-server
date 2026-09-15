@@ -161,6 +161,51 @@ if ($ScenarioName -eq 'native') {
         Remove-Item -LiteralPath $autoClaudePath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $autoClaudeRoot -Force -ErrorAction SilentlyContinue
     }
+
+    $whereClaudeRoot = Join-Path $RunnerTemp 'claude-auto-path'
+    $whereClaudePath = Join-Path $whereClaudeRoot 'claude.exe'
+    $previousPath = [string]$env:Path
+    New-Item -ItemType Directory -Path $whereClaudeRoot -Force | Out-Null
+    try {
+        Copy-Item -LiteralPath $ClaudeCommand -Destination $whereClaudePath -Force
+        $env:Path = $whereClaudeRoot + ';' + $previousPath
+        $whereInvocation = Resolve-ClaudeCodeInvocation
+        if ($null -eq $whereInvocation -or
+            $whereInvocation.Kind -ne 'native' -or
+            -not [string]::Equals(
+                [IO.Path]::GetFullPath($whereInvocation.Executable),
+                [IO.Path]::GetFullPath($whereClaudePath),
+                [StringComparison]::OrdinalIgnoreCase
+            )) {
+            throw 'Automatic Claude Code discovery did not resolve the executable returned by where.exe.'
+        }
+    }
+    finally {
+        $env:Path = $previousPath
+        Remove-Item -LiteralPath $whereClaudePath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $whereClaudeRoot -Force -ErrorAction SilentlyContinue
+    }
+
+    $wingetClaudeRoot = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'
+    $wingetClaudePath = Join-Path $wingetClaudeRoot 'claude.exe'
+    New-Item -ItemType Directory -Path $wingetClaudeRoot -Force | Out-Null
+    try {
+        Copy-Item -LiteralPath $ClaudeCommand -Destination $wingetClaudePath -Force
+        $wingetInvocation = Resolve-ClaudeCodeInvocation
+        if ($null -eq $wingetInvocation -or
+            $wingetInvocation.Kind -ne 'native' -or
+            -not [string]::Equals(
+                [IO.Path]::GetFullPath($wingetInvocation.Executable),
+                [IO.Path]::GetFullPath($wingetClaudePath),
+                [StringComparison]::OrdinalIgnoreCase
+            )) {
+            throw 'Automatic Claude Code discovery did not resolve the WinGet Links installation path.'
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $wingetClaudePath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $wingetClaudeRoot -Force -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Host "[gate 1/10][$ScenarioName] Parse packaged PowerShell and compile Credential Manager helper"

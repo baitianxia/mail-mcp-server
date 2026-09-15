@@ -193,7 +193,12 @@ scope），不调用 `Set-ExecutionPolicy`，不使用 npm/pnpm/npx，也不在�
 ## 用户级注册
 
 安装器先检查包清单和 bundled Windows x64 Python，再探测现有 Claude Code 的 `mcp` 能力。
-版本号只作诊断；兼容性由实际能力和注册结果决定。注册器执行等价的序列：
+CLI 定位先读取 `where.exe claude` 的全部结果，再检查用户/系统 PATH 和已知安装目录，包括
+`%USERPROFILE%\.local\bin`、`%USERPROFILE%\.claude\local`、`%APPDATA%\npm`、
+`%LOCALAPPDATA%\Microsoft\WinGet\Links`、旧版 native `Programs\claude` 目录以及 WinGet
+的 `Anthropic.ClaudeCode*` 包缓存。`WindowsApps\Claude.exe` 只可能是 Claude Desktop 的应用
+别名，会被过滤；WSL 内的 Linux CLI 不属于 Windows 安装器可注册的 CLI。版本号只作诊断；兼容性
+由实际能力和注册结果决定。注册器执行等价的序列：
 
 ```text
 claude mcp remove mail-mcp --scope user
