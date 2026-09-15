@@ -19,9 +19,9 @@
    首次使用可先说“显示邮件助手配置状态”。配置未完成时，结果会给出绝对配置路径、缺失
    字段和下一步命令。
 
-正式包只包含目标 Windows x64 所需的已批准最小运行时和生产文件；不包含 Python 的文档、
-头文件、导入库、包管理器、测试目录或开发缓存。目标机不运行 npm、pnpm、npx，不在线下载依赖，
-也不要求进入 `payload` 目录寻找入口。当前工作区构建的
+正式包只包含目标 Windows x64 所需的已批准最小运行时、生产文件和用户操作文档；架构设计、
+开发说明、测试、构建和内部验收材料只保留在源码仓库。目标机不运行 npm、pnpm、npx，不在线下载
+依赖，也不要求进入 `payload` 目录寻找入口。当前工作区构建的
 `*-UNVERIFIED.zip` 只用于开发验证，安装器会拒绝它。
 
 ## 配置
@@ -84,7 +84,8 @@ Credential Manager 提供。
 发送必须经过两步：`mail_prepare_message` 冻结收件人、主题、正文和附件哈希；用户核对摘要
 后明确回复精确短语 `确认发送`，才能调用 `mail_send_prepared`。令牌 15 分钟后过期，发送
 失败不会自动重试；配置在复核后改变时也必须重新准备。Simple MAPI 受 provider 能力限制，可能只能使用 INBOX、只能标记已读；
-结果会说明这些限制。协议扩展及其 provider 边界见 [`docs/architecture.md`](docs/architecture.md) 的“能力边界与实现来源”。
+结果会说明这些限制。协议扩展及其 provider 边界的维护者说明见
+[源码仓库中的架构文档](https://github.com/baitianxia/mail-mcp-server/blob/main/docs/architecture.md)。
 
 ## 升级、回滚和卸载
 
@@ -141,4 +142,4 @@ Claude 入口的标准用户生命周期日志上传为独立证据制品。
 
 浏览器 MCP 是独立服务，不随本包安装或启动。需要网页研究时只传递有界事实和规范 URL，
 不要把邮箱正文、凭据、Cookie 或下载文件交给浏览器工具；完整边界见
-[`docs/browser-orchestration.md`](docs/browser-orchestration.md)。
+[源码仓库中的浏览器协作文档](https://github.com/baitianxia/mail-mcp-server/blob/main/docs/browser-orchestration.md)。

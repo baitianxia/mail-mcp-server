@@ -223,12 +223,13 @@ claude mcp get mail-mcp
 
 正式 ZIP 的顶层只有一个目录，必须包含 `README.md`、`START-HERE.html`、`INSTALL.cmd`、
 `CONFIGURE.cmd`、`OPEN-CONFIG.cmd`、`UNINSTALL.cmd`、`config/settings.example.json`、
-`payload/`、`release-manifest.json` 和 `SHA256SUMS.txt`。`payload/runtime` 携带经批准的
-Windows x64 Python 最小运行时，只选择解释器、运行时 DLL、标准库和所需扩展；不复制
-`Doc`、`include`、`libs`、`Scripts`、`Tools`、`tcl`、`site-packages`、`Lib/test` 或开发缓存。
-安装所需的 MCP 自检位于 `scripts/mcp-healthcheck.ps1`，发布包不包含源码 `tests/` 目录。
-`runtime-manifest.json` 记录来源、目标、状态和可执行文件哈希。包不含 `.git`、缓存、符号链接、
-测试账号、个人配置、密码或包管理器。
+`payload/`、`release-manifest.json` 和 `SHA256SUMS.txt`。发布包可以包含安装、配置、操作和
+故障排查所需的用户文档；架构设计、开发说明、测试、构建和内部验收材料只保留在源码仓库。
+`payload/runtime` 携带经批准的 Windows x64 Python 最小运行时，只选择解释器、运行时 DLL、
+标准库和所需扩展，不复制 Python 开发文件、测试模块或开发缓存。安装所需的 MCP 自检位于
+`scripts/mcp-healthcheck.ps1`，发布包不包含源码 `tests/` 目录。`runtime-manifest.json` 记录
+来源、目标、状态和可执行文件哈希。包不含 `.git`、缓存、符号链接、测试账号、个人配置、密码
+或包管理器。
 
 `release-manifest.json` 列出每个业务文件的大小和 SHA-256；`SHA256SUMS.txt` 提供外部校验，
 包外 `.zip.sha256` 校验归档本身。构建器只接受审查过的白名单，默认产物带

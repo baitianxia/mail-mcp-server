@@ -49,8 +49,6 @@ EXACT_FILES = (
     ".claude-plugin/plugin.json",
     ".mcp.json",
     "SKILL.md",
-    "docs/architecture.md",
-    "docs/browser-orchestration.md",
     "mcp/check-python.py",
     "mcp/coremail_backend.py",
     "mcp/describe-python.py",
