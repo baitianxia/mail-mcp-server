@@ -64,8 +64,26 @@ jobs:
           "MAIL_RELEASE_EVIDENCE_DIR=$evidenceRoot" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run offline unit tests
-        shell: powershell
-        run: python -B -m unittest discover -s tests -v
+        shell: python
+        run: |
+          import io
+          import os
+          import sys
+          import unittest
+          from pathlib import Path
+
+          report = io.StringIO()
+          suite = unittest.defaultTestLoader.discover('tests')
+          result = unittest.TextTestRunner(stream=report, verbosity=2).run(suite)
+          output = report.getvalue()
+          sys.stdout.write(output)
+          Path(os.environ['MAIL_RELEASE_EVIDENCE_DIR'], 'offline-unit-tests.log').write_text(
+              output, encoding='utf-8'
+          )
+          for test, detail in result.failures + result.errors:
+              escaped = detail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title={test.id()}::{escaped}')
+          raise SystemExit(0 if result.wasSuccessful() else 1)
 
       - name: Parse source PowerShell with Windows PowerShell 5.1
         shell: powershell

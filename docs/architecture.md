@@ -233,7 +233,8 @@ Windows x64 Python 运行时；`runtime-manifest.json` 记录来源、目标、�
 
 Windows gate 另外上传 `mail-mcp-server-windows-gate-evidence`：其中保存构建环境摘要、归档
 哈希、发布与运行时清单、运行时许可证、SBOM，以及 native/npm 两个 Claude 入口在一次性标准
-用户下产生的 stdout、stderr 和生命周期日志。日志文件逐个记录大小和 SHA-256；gate 失败时也
+用户下产生的 stdout、stderr 和生命周期日志，并保存 Windows 离线单测报告；失败测试的详情
+也写入 workflow 注释，便于定位发布阻塞。日志文件逐个记录大小和 SHA-256；gate 失败时也
 尽力先保存已有证据，再清理一次性账户和暂存目录。`-LogPath` 只用于 CI 或诊断覆盖；正式入口
 默认把日志写入 `%USERPROFILE%\mail-mcp-server\logs`，不会把持久状态写入其他工程目录。
 
