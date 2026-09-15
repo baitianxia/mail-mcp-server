@@ -171,6 +171,14 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(release.ReleaseError):
                 release.build_release(ROOT, root / "dist", runtime_dir=runtime)
 
+            clean_runtime = root / "clean-runtime"
+            clean_runtime.mkdir()
+            (clean_runtime / "python.exe").write_bytes(b"fixture")
+            (clean_runtime / "_ctypes_test.pyd").write_bytes(b"fixture")
+            (clean_runtime / "LICENSE.txt").write_text("license", encoding="utf-8")
+            with self.assertRaises(release.ReleaseError):
+                release.build_release(ROOT, root / "clean-dist", runtime_dir=clean_runtime)
+
     def test_public_allowlist_does_not_ship_source_tests(self) -> None:
         self.assertFalse(any(path.startswith("tests/") for path in release.EXACT_FILES))
         self.assertFalse(any(path.startswith("tests/") for path in verifier.PUBLIC_SOURCE_FILES))

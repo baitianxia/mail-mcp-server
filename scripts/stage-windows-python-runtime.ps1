@@ -87,7 +87,7 @@ foreach ($file in Get-ChildItem -LiteralPath $dllRoot -File -Recurse -Force) {
     $relative = $file.FullName.Substring($sourceRoot.Length + 1) -replace '\\', '/'
     if (Test-ExcludedRelativePath -RelativePath $relative) { continue }
     if ($file.Extension.ToLowerInvariant() -notin @('.dll', '.pyd')) { continue }
-    if ($file.Extension.ToLowerInvariant() -eq '.pyd' -and $file.BaseName -match '(?i)^_test') { continue }
+    if ($file.Extension.ToLowerInvariant() -eq '.pyd' -and $file.BaseName -match '(?i)test') { continue }
     Copy-RuntimeFile -File $file -RelativePath $relative
 }
 

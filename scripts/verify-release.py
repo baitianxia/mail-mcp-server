@@ -491,6 +491,8 @@ def _validate_runtime(root: Path, manifest: dict[str, Any], actual: set[str], *,
                 )
             if runtime_path.suffix.casefold() in FORBIDDEN_RUNTIME_SUFFIXES:
                 raise VerificationError(f"development runtime file is forbidden: {runtime_file}")
+            if runtime_path.suffix.casefold() == ".pyd" and "test" in runtime_path.stem.casefold():
+                raise VerificationError(f"test runtime extension is forbidden: {runtime_file}")
             if runtime_path.name.casefold() in FORBIDDEN_RUNTIME_NAMES:
                 raise VerificationError(
                     f"package-manager executable is forbidden in runtime: {runtime_file}"

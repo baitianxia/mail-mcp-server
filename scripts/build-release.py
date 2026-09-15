@@ -383,6 +383,8 @@ def _runtime_files(runtime_dir: Path) -> list[tuple[PurePosixPath, Path]]:
             raise ReleaseError(f"package-manager path is forbidden in runtime: {relative}")
         if path.suffix.casefold() in FORBIDDEN_RUNTIME_SUFFIXES:
             raise ReleaseError(f"development runtime file is forbidden: {relative}")
+        if path.suffix.casefold() == ".pyd" and "test" in path.stem.casefold():
+            raise ReleaseError(f"test runtime extension is forbidden: {relative}")
         if _is_link_or_reparse(path, relative):
             raise ReleaseError(f"runtime link or reparse point is forbidden: {relative}")
         if path.is_dir():
