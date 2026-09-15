@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import imaplib
+import os
 import sqlite3
 import smtplib
 import sys
@@ -71,6 +72,14 @@ def settings_for(directory: Path) -> Settings:
     )
 
 
+def managed_config_path_for_test(profile: Path) -> Path:
+    candidate = profile / "mail-mcp-server" / "config" / "settings.json"
+    # The production path helper deliberately preserves Windows lexical paths
+    # so junctions/reparse points cannot be hidden by resolution.  POSIX
+    # development hosts keep their canonical path behavior.
+    return candidate if os.name == "nt" else candidate.resolve()
+
+
 def mapi_settings_for(directory: Path) -> Settings:
     return Settings(
         config_path=directory / "config.json",
@@ -127,7 +136,7 @@ class SettingsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw_directory:
             path = default_config_path({"USERPROFILE": raw_directory})
             self.assertEqual(
-                Path(raw_directory).resolve() / "mail-mcp-server" / "config" / "settings.json",
+                managed_config_path_for_test(Path(raw_directory)),
                 path,
             )
 
@@ -266,7 +275,7 @@ class SettingsTests(unittest.TestCase):
                 initial = backend.config_status()
                 self.assertFalse(initial["configured"])
                 self.assertEqual(
-                    (profile / "mail-mcp-server" / "config" / "settings.json").resolve(),
+                    managed_config_path_for_test(profile),
                     Path(initial["config_path"]),
                 )
                 self.assertIn("username", initial["missing_fields"])
