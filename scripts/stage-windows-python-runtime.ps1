@@ -22,9 +22,10 @@ $destinationRoot = (Get-Item -LiteralPath $Destination -Force).FullName
 
 $excludedDirectories = @(
     '__pycache__', '.pytest_cache', '.mypy_cache', '.tox',
-    'doc', 'docs', 'ensurepip', 'idlelib', 'include', 'includes',
-    'lib2to3', 'libs', 'site-packages', 'scripts', 'tcl', 'test',
-    'tests', 'tools', 'turtledemo', 'venv'
+    'doc', 'docs', '__phello__', '_pyrepl', 'curses', 'dbm', 'ensurepip',
+    'idlelib', 'include', 'includes', 'lib2to3', 'libs', 'pydoc_data',
+    'site-packages', 'scripts', 'tcl', 'test', 'tests', 'tkinter', 'tools',
+    'turtledemo', 'unittest', 'venv', 'wsgiref', 'xmlrpc'
 )
 
 function Test-ExcludedRelativePath {
@@ -76,6 +77,7 @@ foreach ($file in Get-ChildItem -LiteralPath $libRoot -File -Recurse -Force) {
     $relative = $file.FullName.Substring($sourceRoot.Length + 1) -replace '\\', '/'
     if (Test-ExcludedRelativePath -RelativePath $relative) { continue }
     if (@('.pyc', '.pyo', '.pyi') -contains $file.Extension.ToLowerInvariant()) { continue }
+    if (@('doctest.py', 'pydoc.py') -contains $file.Name.ToLowerInvariant()) { continue }
     Copy-RuntimeFile -File $file -RelativePath $relative
 }
 
@@ -87,7 +89,8 @@ foreach ($file in Get-ChildItem -LiteralPath $dllRoot -File -Recurse -Force) {
     $relative = $file.FullName.Substring($sourceRoot.Length + 1) -replace '\\', '/'
     if (Test-ExcludedRelativePath -RelativePath $relative) { continue }
     if ($file.Extension.ToLowerInvariant() -notin @('.dll', '.pyd')) { continue }
-    if ($file.Extension.ToLowerInvariant() -eq '.pyd' -and $file.BaseName -match '(?i)test') { continue }
+    if ($file.Extension.ToLowerInvariant() -eq '.pyd' -and
+        ($file.BaseName -match '(?i)test' -or $file.BaseName -ieq '_tkinter')) { continue }
     Copy-RuntimeFile -File $file -RelativePath $relative
 }
 

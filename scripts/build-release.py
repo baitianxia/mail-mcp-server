@@ -102,12 +102,17 @@ FORBIDDEN_RUNTIME_PARTS = {
     ".tox",
     "doc",
     "docs",
+    "__phello__",
+    "_pyrepl",
+    "curses",
+    "dbm",
     "ensurepip",
     "idlelib",
     "include",
     "includes",
     "lib2to3",
     "libs",
+    "pydoc_data",
     "site-packages",
     "scripts",
     "tcl",
@@ -115,7 +120,10 @@ FORBIDDEN_RUNTIME_PARTS = {
     "tests",
     "tools",
     "turtledemo",
+    "unittest",
     "venv",
+    "wsgiref",
+    "xmlrpc",
 }
 FORBIDDEN_RUNTIME_SUFFIXES = {".h", ".lib", ".pdb", ".pyc", ".pyo", ".pyi"}
 WINDOWS_RESERVED_NAMES = {
@@ -385,6 +393,8 @@ def _runtime_files(runtime_dir: Path) -> list[tuple[PurePosixPath, Path]]:
             raise ReleaseError(f"development runtime file is forbidden: {relative}")
         if path.suffix.casefold() == ".pyd" and "test" in path.stem.casefold():
             raise ReleaseError(f"test runtime extension is forbidden: {relative}")
+        if path.name.casefold() in {"doctest.py", "pydoc.py"}:
+            raise ReleaseError(f"development runtime file is forbidden: {relative}")
         if _is_link_or_reparse(path, relative):
             raise ReleaseError(f"runtime link or reparse point is forbidden: {relative}")
         if path.is_dir():

@@ -105,12 +105,17 @@ FORBIDDEN_RUNTIME_PARTS = {
     ".tox",
     "doc",
     "docs",
+    "__phello__",
+    "_pyrepl",
+    "curses",
+    "dbm",
     "ensurepip",
     "idlelib",
     "include",
     "includes",
     "lib2to3",
     "libs",
+    "pydoc_data",
     "site-packages",
     "scripts",
     "tcl",
@@ -118,7 +123,10 @@ FORBIDDEN_RUNTIME_PARTS = {
     "tests",
     "tools",
     "turtledemo",
+    "unittest",
     "venv",
+    "wsgiref",
+    "xmlrpc",
 }
 FORBIDDEN_RUNTIME_SUFFIXES = {".h", ".lib", ".pdb", ".pyc", ".pyo", ".pyi"}
 WINDOWS_RESERVED_NAMES = {
@@ -493,6 +501,8 @@ def _validate_runtime(root: Path, manifest: dict[str, Any], actual: set[str], *,
                 raise VerificationError(f"development runtime file is forbidden: {runtime_file}")
             if runtime_path.suffix.casefold() == ".pyd" and "test" in runtime_path.stem.casefold():
                 raise VerificationError(f"test runtime extension is forbidden: {runtime_file}")
+            if runtime_path.name.casefold() in {"doctest.py", "pydoc.py"}:
+                raise VerificationError(f"development runtime file is forbidden: {runtime_file}")
             if runtime_path.name.casefold() in FORBIDDEN_RUNTIME_NAMES:
                 raise VerificationError(
                     f"package-manager executable is forbidden in runtime: {runtime_file}"
