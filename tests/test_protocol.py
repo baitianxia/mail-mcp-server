@@ -15,6 +15,7 @@ SERVER = ROOT / "mcp" / "server.py"
 class ProtocolTests(unittest.TestCase):
     def test_mcp_layout_is_portable_without_a_skill_install(self) -> None:
         manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertTrue(all(byte < 128 for byte in (ROOT / ".claude-plugin" / "plugin.json").read_bytes()))
         self.assertEqual(manifest["name"], "mail-mcp-server")
         self.assertEqual(manifest["displayName"], "邮件助手")
         self.assertEqual(manifest["version"], "0.9.0")
