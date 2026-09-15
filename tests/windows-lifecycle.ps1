@@ -169,7 +169,10 @@ try {
     Invoke-WindowsPowerShellScript -ScriptPath $installer -ExpectFailure -ExpectedText 'absolute local-drive path' -ScriptArguments @('-SkipConnectionCheck', '-ClaudeCommand', $ClaudeCommand, '-LogPath', (Join-Path $RunnerTemp "CUSTOM-$ScenarioName.log"))
 }
 finally { Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue }
-if ((Test-Path -LiteralPath $agentRoot) -or (Get-FileHash -LiteralPath $claudeUserConfigPath -Algorithm SHA256).Hash -ne $userConfigHash) { throw 'Rejected custom Claude root changed state.' }
+if ((Test-Path -LiteralPath $releaseRoot) -or
+    (Get-FileHash -LiteralPath $claudeUserConfigPath -Algorithm SHA256).Hash -ne $userConfigHash) {
+    throw 'Rejected custom Claude root changed state.'
+}
 Assert-ConfigUnchanged -ExpectedHash $fixtureHash
 
 Write-Host "[gate 4/10][$ScenarioName] Install without touching a locked legacy Skill directory"
