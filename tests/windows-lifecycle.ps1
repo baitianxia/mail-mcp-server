@@ -136,6 +136,33 @@ if ((Test-Path -LiteralPath $configPath) -or (Test-Path -LiteralPath $claudeUser
     throw 'Disposable profile unexpectedly contains mail assistant state.'
 }
 
+# Exercise the same native installation path used by a normal Claude Code
+# install.  The lifecycle scenarios pass an explicit fixture path to keep the
+# rest of the gate deterministic; this check makes sure automatic discovery is
+# also covered instead of being validated only by static string assertions.
+if ($ScenarioName -eq 'native') {
+    $autoClaudeRoot = Join-Path $userProfile '.local\bin'
+    $autoClaudePath = Join-Path $autoClaudeRoot 'claude.exe'
+    New-Item -ItemType Directory -Path $autoClaudeRoot -Force | Out-Null
+    try {
+        Copy-Item -LiteralPath $ClaudeCommand -Destination $autoClaudePath -Force
+        $autoInvocation = Resolve-ClaudeCodeInvocation
+        if ($null -eq $autoInvocation -or
+            $autoInvocation.Kind -ne 'native' -or
+            -not [string]::Equals(
+                [IO.Path]::GetFullPath($autoInvocation.Executable),
+                [IO.Path]::GetFullPath($autoClaudePath),
+                [StringComparison]::OrdinalIgnoreCase
+            )) {
+            throw 'Automatic Claude Code discovery did not resolve the native user installation path.'
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $autoClaudePath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $autoClaudeRoot -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Write-Host "[gate 1/10][$ScenarioName] Parse packaged PowerShell and compile Credential Manager helper"
 $parseFailures = @()
 foreach ($scriptFile in (Get-ChildItem -LiteralPath $PluginRoot -Filter '*.ps1' -File -Recurse)) {
