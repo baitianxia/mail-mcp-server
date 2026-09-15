@@ -396,7 +396,7 @@ jobs:
           catch {
             $detail = ($_ | Out-String).Trim()
             $diagnosticLogs = @(Get-ChildItem -LiteralPath $evidenceRoot -File -Recurse -ErrorAction SilentlyContinue |
-              Where-Object { $_.Extension -in @('.log', '.txt') } |
+              Where-Object { $_.Extension -ieq '.log' } |
               Sort-Object LastWriteTime, FullName)
             foreach ($diagnosticLog in $diagnosticLogs) {
               try {
