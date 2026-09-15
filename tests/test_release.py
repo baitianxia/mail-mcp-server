@@ -161,6 +161,20 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(verifier.VerificationError):
                 verifier.verify(package_root, require_windows_gate=False, allow_python_runtime=False)
 
+    def test_runtime_development_and_test_paths_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            runtime = root / "runtime"
+            (runtime / "Lib" / "test").mkdir(parents=True)
+            (runtime / "Lib" / "test" / "test_email.py").write_text("fixture", encoding="utf-8")
+            (runtime / "python.exe").write_bytes(b"fixture")
+            with self.assertRaises(release.ReleaseError):
+                release.build_release(ROOT, root / "dist", runtime_dir=runtime)
+
+    def test_public_allowlist_does_not_ship_source_tests(self) -> None:
+        self.assertFalse(any(path.startswith("tests/") for path in release.EXACT_FILES))
+        self.assertFalse(any(path.startswith("tests/") for path in verifier.PUBLIC_SOURCE_FILES))
+
     def test_release_path_validation_rejects_del_control_character(self) -> None:
         with self.assertRaises(release.ReleaseError):
             release._safe_relative("file\x7f.txt")
@@ -306,6 +320,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn(evidence, workflow)
         self.assertIn("mail-mcp-server-windows-gate-evidence", workflow)
         self.assertIn("if: ${{ always() }}", workflow)
+        self.assertIn("stage-windows-python-runtime.ps1", workflow)
         self.assertIn("-EvidenceDirectory", workflow)
         self.assertIn("Save-CoremailGateEvidence", orchestrator)
         self.assertIn("gate-evidence.json", orchestrator)

@@ -19,8 +19,9 @@
    首次使用可先说“显示邮件助手配置状态”。配置未完成时，结果会给出绝对配置路径、缺失
    字段和下一步命令。
 
-正式包只包含目标 Windows x64 所需的已批准运行时和生产文件。目标机不运行 npm、pnpm、
-npx，不在线下载依赖，也不要求进入 `payload` 目录寻找入口。当前工作区构建的
+正式包只包含目标 Windows x64 所需的已批准最小运行时和生产文件；不包含 Python 的文档、
+头文件、导入库、包管理器、测试目录或开发缓存。目标机不运行 npm、pnpm、npx，不在线下载依赖，
+也不要求进入 `payload` 目录寻找入口。当前工作区构建的
 `*-UNVERIFIED.zip` 只用于开发验证，安装器会拒绝它。
 
 ## 配置
@@ -127,7 +128,7 @@ Credential Manager 提供。
 
 ```powershell
 python -m unittest discover -s tests -v
-powershell.exe -NoLogo -NoProfile -File .\tests\smoke-mcp.ps1
+powershell.exe -NoLogo -NoProfile -File .\scripts\mcp-healthcheck.ps1
 ```
 
 发布构建使用 `scripts/build-release.py` 的白名单和 `scripts/verify-release.py`。正式 ZIP

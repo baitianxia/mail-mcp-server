@@ -173,8 +173,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $pythonCommand = (Get-Command python.exe -ErrorAction Stop).Source
-          & .\tests\smoke-mcp.ps1 -IgnoreAccountConfiguration -PythonExecutable $pythonCommand
-          # smoke-mcp.ps1 is a PowerShell script, not a native executable. Its
+          & .\scripts\mcp-healthcheck.ps1 -IgnoreAccountConfiguration -PythonExecutable $pythonCommand
+          # mcp-healthcheck.ps1 is a PowerShell script, not a native executable. Its
           # success must be checked with `$?`; `$LASTEXITCODE` can still hold a
           # stale value from a previous native command in the runner process.
           if (-not $?) { throw 'Source MCP smoke test failed.' }
@@ -271,21 +271,14 @@ jobs:
           New-Item -ItemType Directory -Path $releaseEvidence -Force | Out-Null
           $pythonCommand = (Get-Command python.exe -ErrorAction Stop).Source
           $pythonHome = Split-Path -Parent $pythonCommand
-          New-Item -ItemType Directory -Path $runtimeBundle -Force | Out-Null
-          # The online publisher runner may stage the approved setup-python
-          # installation into the package. The target installer never performs
-          # this copy, installs Python, or reaches the network.
-          Get-ChildItem -LiteralPath $pythonHome -Force | Copy-Item -Destination $runtimeBundle -Recurse -Force
-          # Keep the archive deterministic and fail closed in the builder: a
-          # setup-python home can acquire bytecode caches while the preceding
-          # source checks run on the hosted worker.
-          $runtimeCacheNames = @('__pycache__', '.pytest_cache', '.mypy_cache', '.tox')
-          $runtimeCaches = @(Get-ChildItem -LiteralPath $runtimeBundle -Directory -Recurse -Force |
-            Where-Object { $runtimeCacheNames -contains $_.Name } |
-            Sort-Object FullName -Descending)
-          foreach ($cache in $runtimeCaches) {
-            Remove-Item -LiteralPath $cache.FullName -Recurse -Force -ErrorAction Stop
-          }
+          # The online publisher runner stages a minimal runtime from the
+          # approved setup-python installation. The target installer never
+          # installs Python, downloads dependencies, or reaches the network.
+          $runtimeStager = Join-Path $PWD 'scripts\stage-windows-python-runtime.ps1'
+          & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $runtimeStager `
+            -Source $pythonHome `
+            -Destination $runtimeBundle
+          if ($LASTEXITCODE -ne 0) { throw 'Minimal Windows Python runtime staging failed.' }
           $runtimeVersion = ((& $pythonCommand -B -I -c "import platform; print(platform.python_version())" 2>&1) -join "`n").Trim()
           $runtimeVersionExitCode = $LASTEXITCODE
           if ($runtimeVersionExitCode -ne 0 -or $runtimeVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {

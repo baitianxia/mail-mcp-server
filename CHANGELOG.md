@@ -16,6 +16,8 @@
 - MCP 运行时的 IMAP/SMTP 认证失败、缺失凭据和空凭据现在返回 `CONFIGURE.cmd`、
   `mail_config_reload` 的恢复指引；`mail_connection_status` 也会报告离线发现的凭据缺失。
 - Windows `.cmd` 入口先切换到 UTF-8 控制台代码页，避免安装、配置和卸载提示出现中文乱码。
+- Windows 发布构建改为从 CI Python 安装中筛选最小运行时；移除文档、头文件、导入库、
+  包管理器、测试目录和开发缓存，安装自检脚本改为生产路径 `scripts/mcp-healthcheck.ps1`。
 
 ## 0.9.0 — 2026-09-07
 

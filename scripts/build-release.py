@@ -70,7 +70,7 @@ EXACT_FILES = (
     "scripts/windows-tool-discovery.ps1",
     "skills/coremail/SKILL.md",
     "skills/web-to-coremail/SKILL.md",
-    "tests/smoke-mcp.ps1",
+    "scripts/mcp-healthcheck.ps1",
 )
 
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -95,6 +95,29 @@ FORBIDDEN_RUNTIME_NAMES = {
     "corepack",
     "corepack.cmd",
 }
+FORBIDDEN_RUNTIME_PARTS = {
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".tox",
+    "doc",
+    "docs",
+    "ensurepip",
+    "idlelib",
+    "include",
+    "includes",
+    "lib2to3",
+    "libs",
+    "site-packages",
+    "scripts",
+    "tcl",
+    "test",
+    "tests",
+    "tools",
+    "turtledemo",
+    "venv",
+}
+FORBIDDEN_RUNTIME_SUFFIXES = {".h", ".lib", ".pdb", ".pyc", ".pyo", ".pyi"}
 WINDOWS_RESERVED_NAMES = {
     "CON",
     "PRN",
@@ -354,8 +377,12 @@ def _runtime_files(runtime_dir: Path) -> list[tuple[PurePosixPath, Path]]:
         folded[folded_key] = safe.as_posix()
         if any(part.lower() in FORBIDDEN_PARTS for part in safe.parts):
             raise ReleaseError(f"forbidden runtime path: {relative}")
+        if any(part.casefold() in FORBIDDEN_RUNTIME_PARTS for part in safe.parts):
+            raise ReleaseError(f"development or test runtime path is forbidden: {relative}")
         if any(part.casefold() in FORBIDDEN_RUNTIME_NAMES for part in safe.parts):
             raise ReleaseError(f"package-manager path is forbidden in runtime: {relative}")
+        if path.suffix.casefold() in FORBIDDEN_RUNTIME_SUFFIXES:
+            raise ReleaseError(f"development runtime file is forbidden: {relative}")
         if _is_link_or_reparse(path, relative):
             raise ReleaseError(f"runtime link or reparse point is forbidden: {relative}")
         if path.is_dir():

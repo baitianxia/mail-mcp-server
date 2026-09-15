@@ -348,7 +348,7 @@ try {
     $pythonRuntime = Get-Content -LiteralPath (Join-Path $stagePlugin 'mcp\python-runtime.json') -Raw | ConvertFrom-Json
     $pythonRuntime.executable = [IO.Path]::GetFullPath([string]$pythonRuntime.executable)
     Assert-CoremailRelease -Root $stagePlugin -AllowPythonRuntime
-    & (Join-Path $stagePlugin 'tests\smoke-mcp.ps1') -IgnoreAccountConfiguration -PythonExecutable $pythonRuntime.executable
+    & (Join-Path $stagePlugin 'scripts\mcp-healthcheck.ps1') -IgnoreAccountConfiguration -PythonExecutable $pythonRuntime.executable
     if (-not $?) { throw 'Staged MCP smoke test failed.' }
 
     Write-Step 3 'Publishing an immutable mail assistant runtime release'
@@ -361,7 +361,7 @@ try {
             $existingDescriptor = Get-Content -LiteralPath (Join-Path $deploymentPath 'mcp\python-runtime.json') -Raw | ConvertFrom-Json
             $existingDescriptor.executable = [IO.Path]::GetFullPath([string]$existingDescriptor.executable)
             $pythonRuntime = $existingDescriptor
-            & (Join-Path $deploymentPath 'tests\smoke-mcp.ps1') -IgnoreAccountConfiguration -PythonExecutable $pythonRuntime.executable
+            & (Join-Path $deploymentPath 'scripts\mcp-healthcheck.ps1') -IgnoreAccountConfiguration -PythonExecutable $pythonRuntime.executable
             if (-not $?) { throw 'Existing runtime smoke test failed.' }
             $reuseExisting = $true
             Write-Host "Verified immutable runtime already exists; reusing: $deploymentPath"
@@ -399,7 +399,7 @@ try {
         Write-CoremailLifecycleLog "IMMUTABLE RELEASE PUBLISHED path=$activeRoot"
     }
     Assert-CoremailRelease -Root $activeRoot -AllowPythonRuntime
-    & (Join-Path $activeRoot 'tests\smoke-mcp.ps1') -IgnoreAccountConfiguration -PythonExecutable $pythonRuntime.executable
+    & (Join-Path $activeRoot 'scripts\mcp-healthcheck.ps1') -IgnoreAccountConfiguration -PythonExecutable $pythonRuntime.executable
     if (-not $?) { throw 'Published MCP smoke test failed.' }
 
     Write-Step 4 'Registering and verifying mail-mcp in Claude user scope'
@@ -432,7 +432,7 @@ try {
     else { Write-Host "Existing non-secret account configuration preserved: $configPath" }
 
     Write-Step 6 'Verifying the installed MCP server and writing the result'
-    $smokeTest = Join-Path $activeRoot 'tests\smoke-mcp.ps1'
+    $smokeTest = Join-Path $activeRoot 'scripts\mcp-healthcheck.ps1'
     & $smokeTest
     if (-not $?) { throw 'Installed MCP smoke test failed.' }
     $connectionVerified = $false

@@ -107,7 +107,7 @@ try {
     }
 
     $setupScript = Join-Path $pluginRoot 'scripts\setup-account.ps1'
-    $smokeTest = Join-Path $pluginRoot 'tests\smoke-mcp.ps1'
+    $smokeTest = Join-Path $pluginRoot 'scripts\mcp-healthcheck.ps1'
     $credentialScript = Join-Path $pluginRoot 'scripts\windows-credential.ps1'
     if (-not (Test-Path -LiteralPath $setupScript -PathType Leaf)) {
         throw "Account setup script not found: $setupScript. Run INSTALL.cmd first."

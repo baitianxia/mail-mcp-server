@@ -153,7 +153,7 @@ Add-Type -TypeDefinition $credentialMatch.Groups['source'].Value -Language CShar
 Write-Host "[gate 2/10][$ScenarioName] Verify package and MCP protocol"
 & $PythonCommand -B -I (Join-Path $PluginRoot 'scripts\verify-release.py') $PluginRoot --require-windows-gate
 if ($LASTEXITCODE -ne 0) { throw 'Packaged internal integrity verification failed.' }
-& (Join-Path $PluginRoot 'tests\smoke-mcp.ps1') -IgnoreAccountConfiguration -PythonExecutable $PythonCommand
+& (Join-Path $PluginRoot 'scripts\mcp-healthcheck.ps1') -IgnoreAccountConfiguration -PythonExecutable $PythonCommand
 if (-not $?) { throw 'Packaged MCP smoke test failed.' }
 
 Write-Host "[gate 3/10][$ScenarioName] Create mailbox fixture and unrelated Claude setting"

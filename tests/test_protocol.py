@@ -45,7 +45,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertNotIn(".claude\\skills", installer)
         self.assertNotIn("plugin-backups", installer)
         self.assertNotIn("RunAs", installer)
-        self.assertIn("tests\\smoke-mcp.ps1", installer)
+        self.assertIn("scripts\\mcp-healthcheck.ps1", installer)
         self.assertIn("register_claude_user_mcp.py", installer)
         self.assertIn("--scope", registrar)
         self.assertIn("user-scope MCP", installer)
@@ -53,7 +53,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertNotIn("plugin enable", installer.lower())
         self.assertNotIn("plugin list", installer.lower())
         launch_sources = installer + (ROOT / "INSTALL.cmd").read_text(encoding="utf-8")
-        launch_sources += (ROOT / "tests" / "smoke-mcp.ps1").read_text(encoding="utf-8")
+        launch_sources += (ROOT / "scripts" / "mcp-healthcheck.ps1").read_text(encoding="utf-8")
         self.assertIn("ExecutionPolicy Bypass", launch_sources)
 
     def test_browser_orchestration_is_isolated_and_send_gated(self) -> None:
@@ -259,7 +259,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("executable_sha256", launcher)
         self.assertNotIn("coremail_python", launcher)
 
-        smoke = (ROOT / "tests" / "smoke-mcp.ps1").read_text(encoding="utf-8")
+        smoke = (ROOT / "scripts" / "mcp-healthcheck.ps1").read_text(encoding="utf-8")
         self.assertNotIn("StandardInputEncoding", smoke)
         self.assertNotIn("PYTHONDONTWRITEBYTECODE", smoke)
         self.assertIn('$startInfo.Arguments = "-B -I', smoke)

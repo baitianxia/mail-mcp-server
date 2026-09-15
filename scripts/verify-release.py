@@ -77,7 +77,7 @@ PUBLIC_SOURCE_FILES = {
     "scripts/windows-tool-discovery.ps1",
     "skills/coremail/SKILL.md",
     "skills/web-to-coremail/SKILL.md",
-    "tests/smoke-mcp.ps1",
+    "scripts/mcp-healthcheck.ps1",
 }
 FORBIDDEN_PARTS = {
     ".git",
@@ -98,6 +98,29 @@ FORBIDDEN_RUNTIME_NAMES = {
     "corepack",
     "corepack.cmd",
 }
+FORBIDDEN_RUNTIME_PARTS = {
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".tox",
+    "doc",
+    "docs",
+    "ensurepip",
+    "idlelib",
+    "include",
+    "includes",
+    "lib2to3",
+    "libs",
+    "site-packages",
+    "scripts",
+    "tcl",
+    "test",
+    "tests",
+    "tools",
+    "turtledemo",
+    "venv",
+}
+FORBIDDEN_RUNTIME_SUFFIXES = {".h", ".lib", ".pdb", ".pyc", ".pyo", ".pyi"}
 WINDOWS_RESERVED_NAMES = {
     "CON",
     "PRN",
@@ -461,7 +484,14 @@ def _validate_runtime(root: Path, manifest: dict[str, Any], actual: set[str], *,
             if path.startswith("payload/runtime/") and path != RUNTIME_MANIFEST
         }
         for runtime_file in runtime_files:
-            if PurePosixPath(runtime_file).name.casefold() in FORBIDDEN_RUNTIME_NAMES:
+            runtime_path = PurePosixPath(runtime_file)
+            if any(part.casefold() in FORBIDDEN_RUNTIME_PARTS for part in runtime_path.parts):
+                raise VerificationError(
+                    f"development or test runtime path is forbidden: {runtime_file}"
+                )
+            if runtime_path.suffix.casefold() in FORBIDDEN_RUNTIME_SUFFIXES:
+                raise VerificationError(f"development runtime file is forbidden: {runtime_file}")
+            if runtime_path.name.casefold() in FORBIDDEN_RUNTIME_NAMES:
                 raise VerificationError(
                     f"package-manager executable is forbidden in runtime: {runtime_file}"
                 )
