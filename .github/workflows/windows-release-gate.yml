@@ -395,6 +395,20 @@ jobs:
           }
           catch {
             $detail = ($_ | Out-String).Trim()
+            $diagnosticLogs = @(Get-ChildItem -LiteralPath $evidenceRoot -File -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.Extension -in @('.log', '.txt') } |
+              Sort-Object LastWriteTime, FullName)
+            foreach ($diagnosticLog in $diagnosticLogs) {
+              try {
+                $tail = @(Get-Content -LiteralPath $diagnosticLog.FullName -Tail 80 -ErrorAction Stop)
+                if ($tail.Count -gt 0) {
+                  $detail += "`n[$($diagnosticLog.FullName)]`n" + ($tail -join "`n")
+                }
+              }
+              catch {
+                $detail += "`n[$($diagnosticLog.FullName)] unable to read diagnostic tail: $($_.Exception.Message)"
+              }
+            }
             $failurePath = Join-Path $evidenceRoot 'release\build-failure.txt'
             New-Item -ItemType Directory -Path (Split-Path -Parent $failurePath) -Force | Out-Null
             [IO.File]::WriteAllText($failurePath, $detail, (New-Object System.Text.UTF8Encoding($false)))
