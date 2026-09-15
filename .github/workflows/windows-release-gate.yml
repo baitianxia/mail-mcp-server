@@ -263,9 +263,10 @@ jobs:
       - name: Build and exercise the exact packaged Windows artifact
         shell: powershell
         run: |
+          $evidenceRoot = [IO.Path]::GetFullPath($env:MAIL_RELEASE_EVIDENCE_DIR)
+          try {
           $candidateRoot = Join-Path $env:RUNNER_TEMP 'mail-release-gated'
           $runtimeBundle = Join-Path $env:RUNNER_TEMP 'mail-python-runtime'
-          $evidenceRoot = [IO.Path]::GetFullPath($env:MAIL_RELEASE_EVIDENCE_DIR)
           $releaseEvidence = Join-Path $evidenceRoot 'release'
           New-Item -ItemType Directory -Path $releaseEvidence -Force | Out-Null
           $pythonCommand = (Get-Command python.exe -ErrorAction Stop).Source
@@ -391,6 +392,16 @@ jobs:
             throw 'The release candidate ZIP changed after lifecycle testing.'
           }
           "MAIL_RELEASE_DIR=$candidateRoot" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          catch {
+            $detail = ($_ | Out-String).Trim()
+            $failurePath = Join-Path $evidenceRoot 'release\build-failure.txt'
+            New-Item -ItemType Directory -Path (Split-Path -Parent $failurePath) -Force | Out-Null
+            [IO.File]::WriteAllText($failurePath, $detail, (New-Object System.Text.UTF8Encoding($false)))
+            $escaped = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Packaged artifact build failed::$escaped"
+            throw
+          }
 
       - name: Upload gated release
         uses: actions/upload-artifact@v7
