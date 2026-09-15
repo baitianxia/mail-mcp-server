@@ -40,6 +40,7 @@ class ProtocolTests(unittest.TestCase):
 
         installer = (ROOT / "scripts" / "install.ps1").read_text(encoding="utf-8")
         registrar = (ROOT / "scripts" / "register_claude_user_mcp.py").read_text(encoding="utf-8")
+        discovery = (ROOT / "scripts" / "windows-tool-discovery.ps1").read_text(encoding="utf-8")
         self.assertIn("mail-mcp-server", installer)
         self.assertIn("versions", installer)
         self.assertIn("payload\\runtime\\python.exe", installer)
@@ -48,6 +49,10 @@ class ProtocolTests(unittest.TestCase):
         self.assertNotIn("RunAs", installer)
         self.assertIn("scripts\\mcp-healthcheck.ps1", installer)
         self.assertIn("register_claude_user_mcp.py", installer)
+        self.assertIn("Claude Code CLI was not found", installer)
+        self.assertIn("-ClaudeCommand", (ROOT / "INSTALL.cmd").read_text(encoding="utf-8"))
+        self.assertIn(".claude\\local", discovery)
+        self.assertIn("$env:APPDATA", discovery)
         self.assertIn("--scope", registrar)
         self.assertIn("user-scope MCP", installer)
         self.assertNotIn("plugin validate", installer.lower())

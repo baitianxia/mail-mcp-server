@@ -22,6 +22,8 @@
 - 发布白名单区分用户操作文档与维护材料；架构、开发、测试、构建和内部验收文档不再随正式包发布。
 - 插件清单改为 ASCII Unicode 转义，兼容 Windows PowerShell 5.1 的默认 JSON 读取编码，避免中文
   清单在安装第 1 步被误解码。
+- Windows 安装器补充 native、旧版本地 npm、全局 npm 和常见安装目录的 Claude Code CLI
+  发现；资源管理器 PATH 尚未刷新时可直接把 CLI 路径作为 `INSTALL.cmd` 第一个参数传入。
 
 ## 0.9.0 — 2026-09-07
 

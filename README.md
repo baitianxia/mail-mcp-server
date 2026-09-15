@@ -19,6 +19,14 @@
    首次使用可先说“显示邮件助手配置状态”。配置未完成时，结果会给出绝对配置路径、缺失
    字段和下一步命令。
 
+安装器需要现有的 Claude Code CLI 来执行用户级 MCP 注册；Claude Desktop 界面本身不能替代
+CLI。如果在已打开的 PowerShell 中 `claude --version` 可以运行，但双击 `INSTALL.cmd` 提示找不到，
+先打开新的 PowerShell 让 PATH 生效，或把 CLI 路径作为第一个参数运行：
+
+```cmd
+INSTALL.cmd "C:\Users\你的用户名\.local\bin\claude.exe"
+```
+
 正式包只包含目标 Windows x64 所需的已批准最小运行时、生产文件和用户操作文档；架构设计、
 开发说明、测试、构建和内部验收材料只保留在源码仓库。目标机不运行 npm、pnpm、npx，不在线下载
 依赖，也不要求进入 `payload` 目录寻找入口。当前工作区构建的

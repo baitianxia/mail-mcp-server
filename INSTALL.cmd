@@ -14,7 +14,11 @@ echo 邮件助手安装/升级正在启动...
 set "MAIL_ROOT=%USERPROFILE%\mail-mcp-server"
 set "MAIL_LOG_DIR=%MAIL_ROOT%\logs"
 set "MAIL_LAUNCH_LOG=%MAIL_LOG_DIR%\INSTALL-%RANDOM%-%RANDOM%.log"
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_SCRIPT%" -LogPath "%MAIL_LAUNCH_LOG%"
+if "%~1"=="" (
+  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_SCRIPT%" -LogPath "%MAIL_LAUNCH_LOG%"
+) else (
+  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_SCRIPT%" -ClaudeCommand "%~1" -LogPath "%MAIL_LAUNCH_LOG%"
+)
 set "INSTALL_EXIT=%ERRORLEVEL%"
 
 echo.

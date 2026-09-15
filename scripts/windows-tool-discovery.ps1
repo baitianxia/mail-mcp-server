@@ -208,20 +208,61 @@ function Resolve-ClaudeCodeInvocation {
     [CmdletBinding()]
     param([string]$ExplicitPath = '')
 
-    $candidates = @()
+    $candidates = New-Object System.Collections.ArrayList
+    function Add-ClaudeCandidate {
+        param([string]$Candidate)
+        if ([string]::IsNullOrWhiteSpace($Candidate)) { return }
+        foreach ($existing in $candidates) {
+            if ([string]::Equals([string]$existing, $Candidate, [StringComparison]::OrdinalIgnoreCase)) {
+                return
+            }
+        }
+        [void]$candidates.Add($Candidate)
+    }
+    function Add-ClaudeCandidatesFromDirectory {
+        param([string]$Directory)
+        if ([string]::IsNullOrWhiteSpace($Directory)) { return }
+        foreach ($name in @('claude.exe', 'claude.cmd')) {
+            try { Add-ClaudeCandidate -Candidate (Join-Path $Directory $name) }
+            catch { }
+        }
+    }
     if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
-        $candidates = @($ExplicitPath)
+        Add-ClaudeCandidate -Candidate $ExplicitPath
     }
     else {
         foreach ($commandName in @('claude.exe', 'claude.cmd')) {
             $command = Get-Command $commandName -CommandType Application -ErrorAction SilentlyContinue
             if ($null -ne $command) {
                 $resolved = if ($command.Source) { $command.Source } else { $command.Path }
-                if ($resolved) { $candidates += $resolved }
+                Add-ClaudeCandidate -Candidate $resolved
             }
         }
         if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
-            $candidates += (Join-Path $env:USERPROFILE '.local\bin\claude.exe')
+            # Native installer and legacy per-user npm installation.
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:USERPROFILE '.local\bin')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:USERPROFILE '.claude\local')
+        }
+        if (-not [string]::IsNullOrWhiteSpace($env:APPDATA)) {
+            # The standard Windows global npm prefix.
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $env:APPDATA 'npm')
+        }
+        foreach ($programRoot in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA)) {
+            if ([string]::IsNullOrWhiteSpace($programRoot)) { continue }
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $programRoot 'ClaudeCode')
+            Add-ClaudeCandidatesFromDirectory -Directory (Join-Path $programRoot 'Programs\ClaudeCode')
+        }
+        # Explorer-launched .cmd files can inherit a stale process PATH after a
+        # Claude installation. Include current, user, and machine PATH values.
+        foreach ($pathValue in @(
+            $env:Path,
+            [Environment]::GetEnvironmentVariable('Path', 'User'),
+            [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        )) {
+            if ([string]::IsNullOrWhiteSpace($pathValue)) { continue }
+            foreach ($directory in $pathValue -split ';') {
+                Add-ClaudeCandidatesFromDirectory -Directory $directory.Trim()
+            }
         }
     }
 

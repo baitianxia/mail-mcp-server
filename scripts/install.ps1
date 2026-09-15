@@ -311,7 +311,9 @@ try {
     Invoke-PinnedPython -Arguments @('-B', '-I', (Join-Path $sourceRoot 'mcp\check-python.py')) -Label 'Bundled Python runtime check'
 
     $claudeInvocation = Resolve-ClaudeCodeInvocation -ExplicitPath $ClaudeCommand
-    if ($null -eq $claudeInvocation) { throw 'Claude Code was not found. The installer uses the existing user installation and does not install or repair it.' }
+    if ($null -eq $claudeInvocation) {
+        throw 'Claude Code CLI was not found. Start `claude --version` in a new PowerShell window, or rerun INSTALL.cmd with the CLI path as its first argument (for example: INSTALL.cmd "C:\Users\<user>\.local\bin\claude.exe"). The installer uses the existing CLI and does not install or repair Claude Code; the Claude Desktop app alone is not a CLI.'
+    }
     $claudeVersion = Get-CoremailClaudeVersion -Invocation $claudeInvocation -Label 'Claude Code version probe'
     $claudeVersionDisplay = '<unreported>'
     if ($null -ne $claudeVersion.Version) { $claudeVersionDisplay = [string]$claudeVersion.Version }
