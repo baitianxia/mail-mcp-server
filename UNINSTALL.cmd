@@ -1,5 +1,6 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
+chcp 65001 >nul 2>&1
 set "UNINSTALL_SCRIPT=%~dp0scripts\uninstall.ps1"
 
 if not exist "%UNINSTALL_SCRIPT%" (

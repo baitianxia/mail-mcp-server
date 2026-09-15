@@ -15,6 +15,7 @@
   条目；连接验证失败会以失败退出，要求使用修正后的秘密重新配置。
 - MCP 运行时的 IMAP/SMTP 认证失败、缺失凭据和空凭据现在返回 `CONFIGURE.cmd`、
   `mail_config_reload` 的恢复指引；`mail_connection_status` 也会报告离线发现的凭据缺失。
+- Windows `.cmd` 入口先切换到 UTF-8 控制台代码页，避免安装、配置和卸载提示出现中文乱码。
 
 ## 0.9.0 — 2026-09-07
 

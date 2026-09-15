@@ -1,5 +1,6 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
+chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 
 set "INSTALL_SCRIPT=%~dp0scripts\install.ps1"
