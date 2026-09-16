@@ -25,6 +25,9 @@
 - Windows 安装器参照其他 MCP 项目的 CLI 定位基线，先读取 `where.exe claude` 的全部结果，
   再检查 native、旧版本地 npm、全局 npm、WinGet Links/包缓存和常见安装目录；资源管理器
   PATH 尚未刷新或 CLI 位于非标准目录时仍可把实际路径作为 `INSTALL.cmd` 第一个参数传入。
+- 修复 NVM、WinGet 和 npm 入口使用符号链接/目录联接时被错误拒绝的问题；外部 CLI 现在通过
+  Windows 文件句柄解析最终路径后验证真实 PE、npm 包身份和 Node 入口，安装日志记录每个候选
+  的接受或拒绝原因。
 
 ## 0.9.0 — 2026-09-07
 

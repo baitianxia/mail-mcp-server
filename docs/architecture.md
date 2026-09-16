@@ -196,9 +196,18 @@ scope），不调用 `Set-ExecutionPolicy`，不使用 npm/pnpm/npx，也不在�
 CLI 定位先读取 `where.exe claude` 的全部结果，再检查用户/系统 PATH 和已知安装目录，包括
 `%USERPROFILE%\.local\bin`、`%USERPROFILE%\.claude\local`、`%APPDATA%\npm`、
 `%LOCALAPPDATA%\Microsoft\WinGet\Links`、旧版 native `Programs\claude` 目录以及 WinGet
-的 `Anthropic.ClaudeCode*` 包缓存。`WindowsApps\Claude.exe` 只可能是 Claude Desktop 的应用
-别名，会被过滤；WSL 内的 Linux CLI 不属于 Windows 安装器可注册的 CLI。版本号只作诊断；兼容性
-由实际能力和注册结果决定。注册器执行等价的序列：
+的 `Anthropic.ClaudeCode*` 包缓存。`WindowsApps\Claude.exe` 可能是 Desktop 应用别名，不能作为
+已确认的 CLI；WSL 内的 Linux CLI 不属于 Windows 安装器可注册的 CLI。
+
+外部 CLI 的安装目录不受发布包“禁止链接”规则约束。WinGet 入口、npm 的 bin 和 NVM 的 Node
+目录可以使用符号链接或目录联接；定位器通过打开文件句柄取得最终本地路径，校验实际 PE 文件，
+然后直接执行该路径。npm 入口按包内 `name` 和 `bin` 解析，JSON 显式按 UTF-8 读取，Node 也执行
+同样的最终路径解析。包、配置、凭据和版本目录仍执行各自的无链接边界检查。
+
+定位结果必须区分候选不存在、候选被拒绝和成功解析。安装及卸载日志记录候选、最终路径或拒绝
+原因，不得把全部拒绝都报告为“没有安装 Claude Code”。Windows 回归必须使用真实文件符号链接、
+目录联接和 npm/Node 链接入口；把可执行文件复制成普通文件不能证明链接安装兼容性。
+版本号只作诊断；兼容性由实际能力和注册结果决定。注册器执行等价的序列：
 
 ```text
 claude mcp remove mail-mcp --scope user

@@ -310,9 +310,16 @@ try {
     # native checks above intentionally do not execute arbitrary package code.
     Invoke-PinnedPython -Arguments @('-B', '-I', (Join-Path $sourceRoot 'mcp\check-python.py')) -Label 'Bundled Python runtime check'
 
-    $claudeInvocation = Resolve-ClaudeCodeInvocation -ExplicitPath $ClaudeCommand
+    $claudeDiscoveryDiagnostics = New-Object System.Collections.ArrayList
+    $claudeInvocation = Resolve-ClaudeCodeInvocation -ExplicitPath $ClaudeCommand -Diagnostics $claudeDiscoveryDiagnostics
+    foreach ($diagnostic in $claudeDiscoveryDiagnostics) {
+        Write-CoremailLifecycleLog ("CLAUDE DISCOVERY: {0}" -f [string]$diagnostic)
+    }
     if ($null -eq $claudeInvocation) {
-        throw 'Claude Code CLI was not found. Start `claude --version` in a new PowerShell window, or rerun INSTALL.cmd with the CLI path as its first argument (for example: INSTALL.cmd "C:\Users\<user>\.local\bin\claude.exe"). The installer uses the existing CLI and does not install or repair Claude Code; the Claude Desktop app alone is not a CLI.'
+        $detail = if ($claudeDiscoveryDiagnostics.Count -gt 0) {
+            ' Discovery details: ' + (($claudeDiscoveryDiagnostics | Select-Object -Last 4) -join ' | ')
+        } else { '' }
+        throw ('Claude Code CLI was not found or was rejected after validation. Start `claude --version` in a new Windows PowerShell/CMD window, or rerun INSTALL.cmd with the CLI path as its first argument (for example: INSTALL.cmd "C:\Users\{user}\.local\bin\claude.exe"). The installer uses the existing CLI and does not install or repair Claude Code; WSL-only and Claude Desktop entries cannot register this Windows MCP.' + $detail)
     }
     $claudeVersion = Get-CoremailClaudeVersion -Invocation $claudeInvocation -Label 'Claude Code version probe'
     $claudeVersionDisplay = '<unreported>'

@@ -22,9 +22,9 @@
 安装器需要现有的 Claude Code CLI 来执行用户级 MCP 注册；Claude Desktop 界面本身不能替代
 CLI。如果在已打开的 PowerShell 中 `claude --version` 可以运行，但双击 `INSTALL.cmd` 提示找不到，
 安装器会依次检查 `where.exe claude`、用户/系统 PATH、官方 native 目录、旧版本地 npm、全局
-npm、WinGet 链接和常见安装目录。先打开新的 PowerShell 让 PATH 生效；如果 CLI 只在 WSL 或
-PowerShell profile 中可用，它不属于 Windows PowerShell 的 CLI，需改用 Windows native/WinGet
-安装，或把实际 Windows CLI 路径作为第一个参数运行：
+npm、WinGet 链接和常见安装目录，并解析 NVM、WinGet 和 npm 使用的符号链接/目录联接。先打开
+新的 PowerShell 让 PATH 生效；如果 CLI 只在 WSL 中可用，它不属于 Windows PowerShell 的 CLI，
+需改用 Windows native/WinGet 安装，或把实际 Windows CLI 路径作为第一个参数运行：
 
 ```cmd
 INSTALL.cmd "C:\Users\你的用户名\.local\bin\claude.exe"
@@ -38,6 +38,9 @@ where.exe claude
 Get-Command claude -All
 claude --version
 ```
+
+如果安装仍失败，安装日志中的 `CLAUDE DISCOVERY` 行会列出候选路径、最终解析路径和拒绝原因；
+不再把“路径存在但被校验拒绝”误报成“没有安装 CLI”。
 
 正式包只包含目标 Windows x64 所需的已批准最小运行时、生产文件和用户操作文档；架构设计、
 开发说明、测试、构建和内部验收材料只保留在源码仓库。目标机不运行 npm、pnpm、npx，不在线下载

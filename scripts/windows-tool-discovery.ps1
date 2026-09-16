@@ -42,11 +42,12 @@ function Test-CoremailPathChainSafe {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    # Checking only the final file is insufficient: a junction in a parent
-    # node_modules directory can redirect an otherwise ordinary-looking Claude
-    # launcher or package. Walk every existing component before Resolve-Path
-    # follows anything. Discovery is Windows-only, so local-drive paths are
-    # required just as they are for the lifecycle scripts.
+    # Package, configuration, and lifecycle paths are fail-closed: checking
+    # only the final file is insufficient because a junction in a parent
+    # directory can redirect an otherwise ordinary-looking path. External
+    # Claude/Node installations use Resolve-CoremailExternalFilePath instead,
+    # because WinGet and NVM legitimately expose links. Discovery is
+    # Windows-only, so local-drive paths are required here.
     try {
         $fullPath = [IO.Path]::GetFullPath($Path)
         if ($fullPath -notmatch '^[A-Za-z]:\\') { return $false }
@@ -81,56 +82,127 @@ function Test-CoremailPathChainSafe {
     catch { return $false }
 }
 
+function Resolve-CoremailExternalFilePath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    # External developer tools may legitimately use a symlink or junction
+    # (WinGet Links, NVM, and npm bin trees do this).  The package/config
+    # boundary still rejects reparse points; for an external executable we
+    # open the file and ask Windows for the final path before validating it.
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    if ($fullPath -notmatch '^[A-Za-z]:\\') {
+        throw "external executable is not an absolute local-drive path: $Path"
+    }
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        throw "external executable does not exist: $Path"
+    }
+
+    if ($null -eq ('MailMcp.ExternalFilePath' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.IO;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+using System.Runtime.InteropServices;
+
+namespace MailMcp {
+    public static class ExternalFilePath {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern uint GetFinalPathNameByHandle(
+            SafeFileHandle hFile,
+            StringBuilder lpszFilePath,
+            uint cchFilePath,
+            uint dwFlags);
+
+        public static string GetFinalPath(SafeFileHandle handle) {
+            uint capacity = 512;
+            for (int attempt = 0; attempt < 5; attempt++) {
+                var buffer = new StringBuilder((int)capacity);
+                uint length = GetFinalPathNameByHandle(handle, buffer, capacity, 0);
+                if (length == 0) {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                if (length < capacity) {
+                    return buffer.ToString();
+                }
+                capacity = length + 1;
+            }
+            throw new IOException("The final external executable path is too long.");
+        }
+    }
+}
+'@ -Language CSharp
+    }
+
+    $stream = $null
+    try {
+        $stream = [IO.File]::Open(
+            $fullPath,
+            [IO.FileMode]::Open,
+            [IO.FileAccess]::Read,
+            [IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete
+        )
+        $finalPath = [MailMcp.ExternalFilePath]::GetFinalPath($stream.SafeFileHandle)
+    }
+    finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+    }
+
+    if ($finalPath.StartsWith('\\?\UNC\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "external executable resolves to a UNC path: $Path"
+    }
+    if ($finalPath.StartsWith('\\?\', [StringComparison]::OrdinalIgnoreCase)) {
+        $finalPath = $finalPath.Substring(4)
+    }
+    if ($finalPath -notmatch '^[A-Za-z]:\\') {
+        throw "external executable resolved to an unsupported path: $Path"
+    }
+    return [IO.Path]::GetFullPath($finalPath)
+}
+
 function Test-CoremailNativeCliExecutable {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Path)
 
     try {
         $fullPath = [IO.Path]::GetFullPath($Path)
-        if ($fullPath -match '(?i)\\Microsoft\\WindowsApps\\') {
+        if ($fullPath -match '(?i)\\(?:Microsoft\\WindowsApps|Program Files\\WindowsApps)\\') {
             # Windows app-execution aliases can resolve as claude.exe but may
             # launch Claude Desktop rather than the Claude Code CLI.
-            return $false
+            return $null
         }
-        if (-not (Test-CoremailPathChainSafe -Path $fullPath)) { return $false }
-        $item = Get-Item -LiteralPath $fullPath -Force -ErrorAction Stop
-        if ($item.PSIsContainer -or
-            ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-            return $false
+        $finalPath = Resolve-CoremailExternalFilePath -Path $fullPath
+        if ($finalPath -match '(?i)\\(?:Microsoft\\WindowsApps|Program Files\\WindowsApps)\\') {
+            return $null
         }
-        return (Test-CoremailPortableExecutable -Path $fullPath)
+        if (-not (Test-CoremailPathChainSafe -Path $finalPath) -or
+            -not (Test-CoremailPortableExecutable -Path $finalPath)) {
+            return $null
+        }
+        return $finalPath
     }
-    catch { return $false }
+    catch { return $null }
 }
 
 function Resolve-NpmClaudeInvocation {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$CommandPath)
 
-    if (-not (Test-CoremailPathChainSafe -Path $CommandPath) -or
-        -not (Test-Path -LiteralPath $CommandPath -PathType Leaf) -or
-        [IO.Path]::GetExtension($CommandPath) -ine '.cmd') {
-        return $null
-    }
-
     try {
-        $resolvedCommand = (Resolve-Path -LiteralPath $CommandPath -ErrorAction Stop).Path
-        if (-not (Test-CoremailPathChainSafe -Path $resolvedCommand)) { return $null }
-        $commandItem = Get-Item -LiteralPath $resolvedCommand -Force -ErrorAction Stop
-        if (($commandItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-            return $null
-        }
+        $resolvedCommand = Resolve-CoremailExternalFilePath -Path $CommandPath
+        if ([IO.Path]::GetExtension($resolvedCommand) -ine '.cmd') { return $null }
         $commandRoot = Split-Path -Parent $resolvedCommand
         $packageRootCandidate = Join-Path $commandRoot 'node_modules\@anthropic-ai\claude-code'
-        if (-not (Test-CoremailPathChainSafe -Path $packageRootCandidate) -or
-            -not (Test-Path -LiteralPath $packageRootCandidate -PathType Container)) {
+        if (-not (Test-Path -LiteralPath $packageRootCandidate -PathType Container)) {
             return $null
         }
-        $packageRoot = (Resolve-Path -LiteralPath $packageRootCandidate -ErrorAction Stop).Path
-        if (-not (Test-CoremailPathChainSafe -Path $packageRoot)) { return $null }
+        $packageRoot = [IO.Path]::GetFullPath($packageRootCandidate).TrimEnd('\')
         $packagePath = Join-Path $packageRoot 'package.json'
-        if (-not (Test-CoremailPathChainSafe -Path $packagePath)) { return $null }
-        $package = Get-Content -LiteralPath $packagePath -Raw -ErrorAction Stop |
+        $resolvedPackagePath = Resolve-CoremailExternalFilePath -Path $packagePath
+        $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)
+        $package = [IO.File]::ReadAllText($resolvedPackagePath, $utf8Strict) |
             ConvertFrom-Json -ErrorAction Stop
         if ([string]$package.name -ne '@anthropic-ai/claude-code') {
             return $null
@@ -155,21 +227,17 @@ function Resolve-NpmClaudeInvocation {
         ) -or -not (Test-Path -LiteralPath $cliPath -PathType Leaf)) {
             return $null
         }
-        if (-not (Test-CoremailPathChainSafe -Path $cliPath)) { return $null }
-
-        $cliItem = Get-Item -LiteralPath $cliPath -Force -ErrorAction Stop
-        if (($cliItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-            return $null
-        }
-        $cliExtension = [IO.Path]::GetExtension($cliPath)
+        $resolvedCliPath = Resolve-CoremailExternalFilePath -Path $cliPath
+        $cliExtension = [IO.Path]::GetExtension($resolvedCliPath)
         if ($cliExtension -ieq '.exe') {
             # Current npm releases replace their declared bin/claude.exe stub
             # with the platform-native PE during postinstall. Execute that
             # declared binary directly; passing it to node.exe is incorrect.
-            if (-not (Test-CoremailNativeCliExecutable -Path $cliPath)) { return $null }
+            $nativeCli = Test-CoremailNativeCliExecutable -Path $resolvedCliPath
+            if ([string]::IsNullOrWhiteSpace([string]$nativeCli)) { return $null }
             return [pscustomobject]@{
                 CommandPath = $resolvedCommand
-                Executable = $cliPath
+                Executable = $nativeCli
                 Prefix = [string[]]@()
                 Kind = 'npm'
                 NpmBinKind = 'native'
@@ -185,10 +253,10 @@ function Resolve-NpmClaudeInvocation {
         foreach ($nodeCandidate in $nodeCandidates) {
             if ([string]::IsNullOrWhiteSpace($nodeCandidate) -or
                 -not (Test-Path -LiteralPath $nodeCandidate -PathType Leaf)) { continue }
-            $resolvedNode = (Resolve-Path -LiteralPath $nodeCandidate -ErrorAction Stop).Path
-            if (-not (Test-CoremailPathChainSafe -Path $resolvedNode)) { continue }
+            try { $resolvedNode = Resolve-CoremailExternalFilePath -Path $nodeCandidate }
+            catch { continue }
             if ([IO.Path]::GetExtension($resolvedNode) -ine '.exe' -or
-                -not (Test-CoremailNativeCliExecutable -Path $resolvedNode)) { continue }
+                [string]::IsNullOrWhiteSpace([string](Test-CoremailNativeCliExecutable -Path $resolvedNode))) { continue }
             return [pscustomobject]@{
                 CommandPath = $resolvedCommand
                 Executable = $resolvedNode
@@ -199,16 +267,25 @@ function Resolve-NpmClaudeInvocation {
         }
     }
     catch {
-        return $null
+        throw
     }
     return $null
 }
 
 function Resolve-ClaudeCodeInvocation {
     [CmdletBinding()]
-    param([string]$ExplicitPath = '')
+    param(
+        [string]$ExplicitPath = '',
+        [System.Collections.IList]$Diagnostics = $null
+    )
 
     $candidates = New-Object System.Collections.ArrayList
+    function Add-ClaudeDiagnostic {
+        param([string]$Message)
+        if ($null -ne $Diagnostics -and -not [string]::IsNullOrWhiteSpace($Message)) {
+            [void]$Diagnostics.Add($Message)
+        }
+    }
     function Add-ClaudeCandidate {
         param([string]$Candidate)
         if ([string]::IsNullOrWhiteSpace($Candidate)) { return }
@@ -311,26 +388,37 @@ function Resolve-ClaudeCodeInvocation {
     foreach ($candidate in $candidates) {
         if ([string]::IsNullOrWhiteSpace($candidate) -or
             -not (Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
-        if (-not (Test-CoremailPathChainSafe -Path $candidate)) { continue }
-        try { $resolvedCandidate = (Resolve-Path -LiteralPath $candidate -ErrorAction Stop).Path }
-        catch { continue }
-        if (-not (Test-CoremailPathChainSafe -Path $resolvedCandidate)) { continue }
-        $extension = [IO.Path]::GetExtension($resolvedCandidate)
+        $extension = [IO.Path]::GetExtension($candidate)
         if ($extension -ieq '.exe') {
-            if (-not (Test-CoremailNativeCliExecutable -Path $resolvedCandidate)) {
-                continue
+            $nativeCli = Test-CoremailNativeCliExecutable -Path $candidate
+            if (-not [string]::IsNullOrWhiteSpace([string]$nativeCli)) {
+                Add-ClaudeDiagnostic -Message ("accepted native candidate: {0} -> {1}" -f $candidate, $nativeCli)
+                return [pscustomobject]@{
+                    CommandPath = $candidate
+                    Executable = $nativeCli
+                    Prefix = [string[]]@()
+                    Kind = 'native'
+                }
             }
-            return [pscustomobject]@{
-                CommandPath = $resolvedCandidate
-                Executable = $resolvedCandidate
-                Prefix = [string[]]@()
-                Kind = 'native'
-            }
+            Add-ClaudeDiagnostic -Message ("rejected native candidate: {0} (not a usable local Claude Code PE or final path)" -f $candidate)
         }
         if ($extension -ieq '.cmd') {
-            $npmInvocation = Resolve-NpmClaudeInvocation -CommandPath $resolvedCandidate
-            if ($null -ne $npmInvocation) { return $npmInvocation }
+            try {
+                $npmInvocation = Resolve-NpmClaudeInvocation -CommandPath $candidate
+                if ($null -ne $npmInvocation) {
+                    Add-ClaudeDiagnostic -Message ("accepted npm candidate: {0} -> {1}" -f $candidate, $npmInvocation.Executable)
+                    return $npmInvocation
+                }
+                Add-ClaudeDiagnostic -Message ("rejected npm candidate: {0} (package identity, bin, Node, or PE validation failed)" -f $candidate)
+            }
+            catch {
+                Add-ClaudeDiagnostic -Message ("rejected npm candidate: {0} ({1})" -f $candidate, $_.Exception.Message)
+            }
+        }
+        if ($extension -notin @('.exe', '.cmd')) {
+            Add-ClaudeDiagnostic -Message ("ignored candidate with unsupported extension: {0}" -f $candidate)
         }
     }
+    Add-ClaudeDiagnostic -Message 'no usable Claude Code CLI candidate remained after validation'
     return $null
 }
