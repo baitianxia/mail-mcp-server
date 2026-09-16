@@ -136,38 +136,6 @@ if ((Test-Path -LiteralPath $configPath) -or (Test-Path -LiteralPath $claudeUser
     throw 'Disposable profile unexpectedly contains mail assistant state.'
 }
 
-# NVM for Windows exposes nodejs through a directory junction.  Keep the
-# fixture target unchanged and resolve the Claude entry through a disposable
-# junction so the standard-user gate exercises the same topology as the
-# reported C:\nvm4w\nodejs installation.
-$linkedClaudeRoot = Join-Path $RunnerTemp 'claude-nvm-link'
-$linkedClaudeTarget = Split-Path -Parent $ClaudeCommand
-$linkedClaudePath = Join-Path $linkedClaudeRoot (Split-Path -Leaf $ClaudeCommand)
-try {
-    New-Item -ItemType Junction -Path $linkedClaudeRoot -Target $linkedClaudeTarget -Force | Out-Null
-    $linkedInvocation = Resolve-ClaudeCodeInvocation -ExplicitPath $linkedClaudePath
-    $linkedTargetPath = if ($null -ne $linkedInvocation -and $linkedInvocation.Kind -eq 'npm') {
-        Resolve-CoremailExternalFilePath -Path (Join-Path $linkedClaudeTarget 'node.exe')
-    } else {
-        Resolve-CoremailExternalFilePath -Path $ClaudeCommand
-    }
-    if ($null -eq $linkedInvocation -or
-        -not [string]::Equals(
-            [IO.Path]::GetFullPath($linkedInvocation.Executable),
-            [IO.Path]::GetFullPath($linkedTargetPath),
-            [StringComparison]::OrdinalIgnoreCase
-        )) {
-        throw 'Claude Code discovery rejected the directory-junction fixture.'
-    }
-}
-finally {
-    try { [IO.Directory]::Delete($linkedClaudeRoot) }
-    catch {
-        $cmdExe = Join-Path $env:SystemRoot 'System32\cmd.exe'
-        & $cmdExe /d /c rmdir /q $linkedClaudeRoot 2>$null
-    }
-}
-
 # Exercise the same native installation path used by a normal Claude Code
 # install.  The lifecycle scenarios pass an explicit fixture path to keep the
 # rest of the gate deterministic; this check makes sure automatic discovery is

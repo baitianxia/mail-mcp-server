@@ -260,6 +260,14 @@ jobs:
             else { Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue }
           }
 
+          $cliDiscoveryEvidence = Join-Path $env:MAIL_RELEASE_EVIDENCE_DIR 'cli-discovery-links.log'
+          & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File .\tests\windows-cli-discovery.ps1 `
+            -NativeClaude $env:NATIVE_CLAUDE `
+            -LegacyNpmClaude $env:LEGACY_NPM_CLAUDE `
+            -NodeExecutable $env:NPM_NODE `
+            -EvidencePath $cliDiscoveryEvidence
+          if ($LASTEXITCODE -ne 0) { throw 'Claude CLI link discovery regression failed.' }
+
       - name: Build and exercise the exact packaged Windows artifact
         shell: powershell
         run: |
