@@ -33,6 +33,18 @@ C:\Users\tianxiabai\AppData\Roaming\npm\claude.cmd
 
 这是把“发布包/配置路径禁止链接”的安全边界错误套到了用户已安装的外部 CLI 上。
 
+## 历史定位
+
+这次回归不是 HTML 邮件能力本身造成的。增加 HTML 能力的提交 `5617c13` 没有修改
+`INSTALL.cmd`、`scripts/install.ps1` 或 `scripts/windows-tool-discovery.ps1`。真正改变行为的是更早的
+Windows 统一打包提交 `f781273`：它新增 `Test-CoremailPathChainSafe`，并在外部 Claude/npm/Node
+候选上拒绝任意符号链接和目录联接。其父版本只按命令入口和 npm 包清单定位，因此能通过
+NVM 的 `C:\nvm4w\nodejs`。随后 `1c7b31f` 和 `e336283` 扩大了候选目录，但仍保留这条错误的
+拒绝规则。
+
+当前版本只对邮件助手自己的发布、配置和版本目录执行无链接边界；对外部 CLI 先取得文件句柄的
+最终本地路径，再校验实际 PE、包身份和 Node 入口。
+
 ## 修复
 
 - 外部 CLI 通过 Windows 文件句柄的 `GetFinalPathNameByHandle` 解析最终本地路径。
